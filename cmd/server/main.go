@@ -11,14 +11,21 @@ import (
 
 	"github.com/yourname/pocket-api/internal/api"
 	"github.com/yourname/pocket-api/internal/config"
+	"github.com/yourname/pocket-api/internal/db"
 )
 
 func main() {
 	cfg := config.Load()
 
+	database, err := db.Connect(cfg.DatabaseURL)
+	if err != nil {
+		log.Printf("database connection failed: %v", err)
+		os.Exit(1)
+	}
+
 	srv := &http.Server{
 		Addr:         ":" + cfg.Port,
-		Handler:      api.NewRouter(cfg),
+		Handler:      api.NewRouter(cfg, database),
 		ReadTimeout:  10 * time.Second,
 		WriteTimeout: 10 * time.Second,
 	}
