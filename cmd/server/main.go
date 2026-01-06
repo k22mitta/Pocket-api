@@ -23,6 +23,10 @@ func main() {
 		os.Exit(1)
 	}
 
+	if err := db.RunMigrations(database); err != nil {
+		log.Fatalf("migrations failed: %v", err)
+	}
+
 	srv := &http.Server{
 		Addr:         ":" + cfg.Port,
 		Handler:      api.NewRouter(cfg, database),
