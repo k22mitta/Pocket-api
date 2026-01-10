@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"net/http"
 
+	"github.com/yourname/pocket-api/internal/api/handlers"
 	"github.com/yourname/pocket-api/internal/config"
 )
 
@@ -17,6 +18,7 @@ func NewRouter(cfg config.Config, db *sql.DB) http.Handler {
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /health", r.handleHealth)
+	mux.HandleFunc("POST /auth/register", handlers.Register(r.db))
 
 	return mux
 }
