@@ -10,15 +10,17 @@ import (
 )
 
 type router struct {
-	db *sql.DB
+	db  *sql.DB
+	cfg config.Config
 }
 
 func NewRouter(cfg config.Config, db *sql.DB) http.Handler {
-	r := &router{db: db}
+	r := &router{db: db, cfg: cfg}
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /health", r.handleHealth)
 	mux.HandleFunc("POST /auth/register", handlers.Register(r.db))
+	mux.HandleFunc("POST /auth/login", handlers.Login(r.db, r.cfg.JWTSecret))
 
 	return mux
 }
