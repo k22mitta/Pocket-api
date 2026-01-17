@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/yourname/pocket-api/internal/api"
+	"github.com/yourname/pocket-api/internal/api/middleware"
 	"github.com/yourname/pocket-api/internal/config"
 	"github.com/yourname/pocket-api/internal/db"
 )
@@ -29,7 +30,7 @@ func main() {
 
 	srv := &http.Server{
 		Addr:         ":" + cfg.Port,
-		Handler:      api.NewRouter(cfg, database),
+		Handler:      middleware.Logger()(middleware.CORS()(api.NewRouter(cfg, database))),
 		ReadTimeout:  10 * time.Second,
 		WriteTimeout: 10 * time.Second,
 	}
