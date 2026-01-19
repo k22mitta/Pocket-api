@@ -39,12 +39,14 @@ func main() {
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 
 	go func() {
+		log.Printf("starting server on :%s", cfg.Port)
 		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			log.Fatalf("listen: %v", err)
 		}
 	}()
 
 	<-quit
+	log.Println("shutting down server...")
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
@@ -53,5 +55,6 @@ func main() {
 		log.Fatalf("server forced to shutdown: %v", err)
 	}
 
+	database.Close()
 	log.Println("server stopped")
 }

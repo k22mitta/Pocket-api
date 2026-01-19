@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"net/http"
+	"time"
 
 	"github.com/yourname/pocket-api/internal/api/handlers"
 	"github.com/yourname/pocket-api/internal/api/middleware"
@@ -29,7 +30,11 @@ func NewRouter(cfg config.Config, db *sql.DB) http.Handler {
 
 func (r *router) handleHealth(w http.ResponseWriter, req *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
+	json.NewEncoder(w).Encode(map[string]string{
+		"status":    "ok",
+		"version":   "1.0.0",
+		"timestamp": time.Now().UTC().Format(time.RFC3339),
+	})
 }
 
 func (r *router) handleMe(w http.ResponseWriter, req *http.Request) {
