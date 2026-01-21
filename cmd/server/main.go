@@ -9,6 +9,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/joho/godotenv"
 	"github.com/yourname/pocket-api/internal/api"
 	"github.com/yourname/pocket-api/internal/api/middleware"
 	"github.com/yourname/pocket-api/internal/config"
@@ -16,6 +17,8 @@ import (
 )
 
 func main() {
+	_ = godotenv.Load()
+
 	cfg := config.Load()
 
 	database, err := db.Connect(cfg.DatabaseURL)
