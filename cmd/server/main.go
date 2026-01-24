@@ -14,6 +14,7 @@ import (
 	"github.com/yourname/pocket-api/internal/api/middleware"
 	"github.com/yourname/pocket-api/internal/config"
 	"github.com/yourname/pocket-api/internal/db"
+	plaidclient "github.com/yourname/pocket-api/internal/plaid"
 )
 
 func main() {
@@ -31,9 +32,11 @@ func main() {
 		log.Fatalf("migrations failed: %v", err)
 	}
 
+	plaidClient := plaidclient.NewClient(cfg.PlaidClientID, cfg.PlaidSecret, cfg.PlaidEnv)
+
 	srv := &http.Server{
 		Addr:         ":" + cfg.Port,
-		Handler:      middleware.Logger()(middleware.CORS()(api.NewRouter(cfg, database))),
+		Handler:      middleware.Logger()(middleware.CORS()(api.NewRouter(cfg, database, plaidClient))),
 		ReadTimeout:  10 * time.Second,
 		WriteTimeout: 10 * time.Second,
 	}
