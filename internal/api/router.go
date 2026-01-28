@@ -28,6 +28,7 @@ func NewRouter(cfg config.Config, db *sql.DB, plaidClient *plaidclient.Client) h
 	mux.Handle("GET /auth/me", middleware.RequireAuth(r.cfg.JWTSecret)(http.HandlerFunc(r.handleMe)))
 	mux.Handle("POST /plaid/link-token", middleware.RequireAuth(r.cfg.JWTSecret)(http.HandlerFunc(handlers.CreateLinkToken(r.plaidClient, r.db))))
 	mux.Handle("POST /plaid/exchange", middleware.RequireAuth(r.cfg.JWTSecret)(http.HandlerFunc(handlers.ExchangeToken(r.plaidClient, r.db))))
+	mux.Handle("GET /accounts", middleware.RequireAuth(r.cfg.JWTSecret)(http.HandlerFunc(handlers.GetAccounts(r.db))))
 
 	return mux
 }

@@ -15,6 +15,11 @@ func CreatePlaidItem(db *sql.DB, userID, accessToken, itemID, institutionID, ins
 	return err
 }
 
+func UpdateLastSynced(db *sql.DB, itemID string) error {
+	_, err := db.Exec(`UPDATE plaid_items SET last_synced_at = NOW() WHERE id = $1`, itemID)
+	return err
+}
+
 func GetPlaidItemsByUserID(db *sql.DB, userID string) ([]models.PlaidItem, error) {
 	rows, err := db.Query(
 		`SELECT id, user_id, access_token, item_id, institution_id, institution_name, last_synced_at, sync_error, created_at
