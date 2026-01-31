@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"time"
 
 	"github.com/plaid/plaid-go/v29/plaid"
 	"github.com/yourname/pocket-api/internal/db/queries"
@@ -60,4 +61,62 @@ func SyncAccounts(ctx context.Context, client *Client, db *sql.DB, userID string
 	}
 
 	return queries.UpdateLastSynced(db, item.ID)
+}
+
+func SyncTransactions(ctx context.Context, client *Client, db *sql.DB, userID string, item models.PlaidItem, accounts map[string]string) error {
+	now := time.Now()
+	startDate := now.AddDate(0, 0, -90).Format("2006-01-02")
+	endDate := now.Format("2006-01-02")
+
+	resp, _, err := client.api.PlaidApi.TransactionsGet(ctx).
+		TransactionsGetRequest(*plaid.NewTransactionsGetRequest(item.AccessToken, startDate, endDate)).
+		Execute()
+	if err != nil {
+		return fmt.Errorf("fetching transactions: %w", err)
+	}
+
+	for _, pt := range resp.GetTransactions() {
+		accountID, ok := accounts[pt.GetAccountId()]
+		if !ok {
+			continue
+		}
+
+		date, err := time.Parse("2006-01-02", pt.GetDate())
+		if err != nil {
+			continue
+		}
+
+		cats, _ := pt.GetCategoryOk()
+		var plaidCat *string
+		var catSlice []string
+		if cats != nil {
+			catSlice = *cats
+			if len(catSlice) > 0 {
+				s := catSlice[0]
+				plaidCat = &s
+			}
+		}
+
+		t := models.Transaction{
+			UserID:             userID,
+			AccountID:          accountID,
+			PlaidTransactionID: pt.GetTransactionId(),
+			Name:               pt.GetName(),
+			Amount:             pt.GetAmount(),
+			Category:           NormalizeCategory(catSlice),
+			PlaidCategory:      plaidCat,
+			Date:               date,
+			Pending:            pt.GetPending(),
+		}
+
+		if name, ok := pt.GetMerchantNameOk(); ok && name != nil {
+			t.MerchantName = name
+		}
+
+		if err := queries.UpsertTransaction(db, t); err != nil {
+			return fmt.Errorf("upserting transaction %s: %w", t.PlaidTransactionID, err)
+		}
+	}
+
+	return nil
 }
