@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"log"
 	"net/http"
 
 	"github.com/plaid/plaid-go/v29/plaid"
@@ -65,6 +66,74 @@ func ExchangeToken(pc *plaidclient.Client, db *sql.DB) http.HandlerFunc {
 			return
 		}
 
+		itemID := resp.GetItemId()
+		go func() {
+			ctx := context.Background()
+			item, err := queries.GetPlaidItemByItemID(db, itemID)
+			if err != nil {
+				log.Printf("sync: failed to fetch item %s: %v", itemID, err)
+				return
+			}
+			if err := plaidclient.SyncAccounts(ctx, pc, db, userID, item); err != nil {
+				log.Printf("sync: SyncAccounts failed for item %s: %v", itemID, err)
+				return
+			}
+			accountsMap, err := buildAccountsMap(db, userID)
+			if err != nil {
+				log.Printf("sync: failed to build accounts map for user %s: %v", userID, err)
+				return
+			}
+			if err := plaidclient.SyncTransactions(ctx, pc, db, userID, item, accountsMap); err != nil {
+				log.Printf("sync: SyncTransactions failed for item %s: %v", itemID, err)
+			}
+		}()
+
 		writeJSON(w, http.StatusOK, map[string]bool{"success": true})
 	}
+}
+
+func SyncAll(pc *plaidclient.Client, db *sql.DB) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		userID := middleware.UserIDFromContext(r.Context())
+
+		items, err := queries.GetPlaidItemsByUserID(db, userID)
+		if err != nil {
+			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "internal server error"})
+			return
+		}
+
+		ctx := context.Background()
+		synced := 0
+
+		for _, item := range items {
+			if err := plaidclient.SyncAccounts(ctx, pc, db, userID, item); err != nil {
+				log.Printf("sync: SyncAccounts failed for item %s: %v", item.ItemID, err)
+				continue
+			}
+			accountsMap, err := buildAccountsMap(db, userID)
+			if err != nil {
+				log.Printf("sync: failed to build accounts map for user %s: %v", userID, err)
+				continue
+			}
+			if err := plaidclient.SyncTransactions(ctx, pc, db, userID, item, accountsMap); err != nil {
+				log.Printf("sync: SyncTransactions failed for item %s: %v", item.ItemID, err)
+				continue
+			}
+			synced++
+		}
+
+		writeJSON(w, http.StatusOK, map[string]int{"synced": synced})
+	}
+}
+
+func buildAccountsMap(db *sql.DB, userID string) (map[string]string, error) {
+	accounts, err := queries.GetAccountsByUserID(db, userID)
+	if err != nil {
+		return nil, err
+	}
+	m := make(map[string]string, len(accounts))
+	for _, a := range accounts {
+		m[a.PlaidAccountID] = a.ID
+	}
+	return m, nil
 }
