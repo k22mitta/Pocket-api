@@ -34,6 +34,31 @@ func UpdateLastSynced(db *sql.DB, itemID string) error {
 	return err
 }
 
+func GetAllPlaidItems(db *sql.DB) ([]models.PlaidItem, error) {
+	rows, err := db.Query(
+		`SELECT id, user_id, access_token, item_id, institution_id, institution_name, last_synced_at, sync_error, created_at
+		 FROM plaid_items`,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var items []models.PlaidItem
+	for rows.Next() {
+		var item models.PlaidItem
+		if err := rows.Scan(
+			&item.ID, &item.UserID, &item.AccessToken, &item.ItemID,
+			&item.InstitutionID, &item.InstitutionName,
+			&item.LastSyncedAt, &item.SyncError, &item.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, item)
+	}
+	return items, rows.Err()
+}
+
 func GetPlaidItemsByUserID(db *sql.DB, userID string) ([]models.PlaidItem, error) {
 	rows, err := db.Query(
 		`SELECT id, user_id, access_token, item_id, institution_id, institution_name, last_synced_at, sync_error, created_at

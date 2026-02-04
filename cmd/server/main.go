@@ -41,6 +41,8 @@ func main() {
 		WriteTimeout: 10 * time.Second,
 	}
 
+	stopSync := plaidclient.StartSyncScheduler(database, plaidClient, 6*time.Hour)
+
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 
@@ -61,6 +63,7 @@ func main() {
 		log.Fatalf("server forced to shutdown: %v", err)
 	}
 
+	stopSync()
 	database.Close()
 	log.Println("server stopped")
 }
