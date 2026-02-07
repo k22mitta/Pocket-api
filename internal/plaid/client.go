@@ -1,6 +1,9 @@
 package plaidclient
 
 import (
+	"context"
+	"fmt"
+
 	"github.com/plaid/plaid-go/v29/plaid"
 )
 
@@ -27,4 +30,14 @@ func NewClient(clientID, secret, env string) *Client {
 
 func (c *Client) API() *plaid.APIClient {
 	return c.api
+}
+
+func RemoveItem(ctx context.Context, client *Client, accessToken string) error {
+	_, _, err := client.api.PlaidApi.ItemRemove(ctx).
+		ItemRemoveRequest(*plaid.NewItemRemoveRequest(accessToken)).
+		Execute()
+	if err != nil {
+		return fmt.Errorf("revoking plaid item: %w", err)
+	}
+	return nil
 }
