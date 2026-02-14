@@ -14,21 +14,29 @@ func GetTransactions(db *sql.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		userID := middleware.UserIDFromContext(r.Context())
 
-		limit := 50
-		offset := 0
+		filters := queries.TransactionFilters{
+			Limit:  50,
+			Offset: 0,
+		}
 
-		if v := r.URL.Query().Get("limit"); v != "" {
+		q := r.URL.Query()
+		filters.Search = q.Get("search")
+		filters.Category = q.Get("category")
+		filters.StartDate = q.Get("start")
+		filters.EndDate = q.Get("end")
+
+		if v := q.Get("limit"); v != "" {
 			if n, err := strconv.Atoi(v); err == nil && n > 0 {
-				limit = n
+				filters.Limit = n
 			}
 		}
-		if v := r.URL.Query().Get("offset"); v != "" {
+		if v := q.Get("offset"); v != "" {
 			if n, err := strconv.Atoi(v); err == nil && n >= 0 {
-				offset = n
+				filters.Offset = n
 			}
 		}
 
-		txns, err := queries.GetTransactionsByUserID(db, userID, limit, offset)
+		txns, err := queries.GetTransactionsByUserID(db, userID, filters)
 		if err != nil {
 			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "internal server error"})
 			return
