@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/yourname/pocket-api/internal/ai"
 	"github.com/yourname/pocket-api/internal/api/handlers"
 	"github.com/yourname/pocket-api/internal/api/middleware"
 	"github.com/yourname/pocket-api/internal/config"
@@ -16,10 +17,11 @@ type router struct {
 	db          *sql.DB
 	cfg         config.Config
 	plaidClient *plaidclient.Client
+	aiClient    *ai.Client
 }
 
-func NewRouter(cfg config.Config, db *sql.DB, plaidClient *plaidclient.Client) http.Handler {
-	r := &router{db: db, cfg: cfg, plaidClient: plaidClient}
+func NewRouter(cfg config.Config, db *sql.DB, plaidClient *plaidclient.Client, aiClient *ai.Client) http.Handler {
+	r := &router{db: db, cfg: cfg, plaidClient: plaidClient, aiClient: aiClient}
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /health", r.handleHealth)
@@ -39,6 +41,8 @@ func NewRouter(cfg config.Config, db *sql.DB, plaidClient *plaidclient.Client) h
 	mux.Handle("GET /summary/spending", middleware.RequireAuth(r.cfg.JWTSecret)(http.HandlerFunc(handlers.GetSpendingSummary(r.db))))
 	mux.Handle("GET /summary/cashflow", middleware.RequireAuth(r.cfg.JWTSecret)(http.HandlerFunc(handlers.GetCashFlow(r.db))))
 	mux.Handle("GET /summary/balance", middleware.RequireAuth(r.cfg.JWTSecret)(http.HandlerFunc(handlers.GetBalance(r.db))))
+	mux.Handle("POST /chat", middleware.RequireAuth(r.cfg.JWTSecret)(http.HandlerFunc(handlers.Chat(r.aiClient, r.db))))
+	mux.Handle("GET /chat/history", middleware.RequireAuth(r.cfg.JWTSecret)(http.HandlerFunc(handlers.GetChatHistory(r.db))))
 
 	return mux
 }
