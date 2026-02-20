@@ -41,7 +41,7 @@ func NewRouter(cfg config.Config, db *sql.DB, plaidClient *plaidclient.Client, a
 	mux.Handle("GET /summary/spending", middleware.RequireAuth(r.cfg.JWTSecret)(http.HandlerFunc(handlers.GetSpendingSummary(r.db))))
 	mux.Handle("GET /summary/cashflow", middleware.RequireAuth(r.cfg.JWTSecret)(http.HandlerFunc(handlers.GetCashFlow(r.db))))
 	mux.Handle("GET /summary/balance", middleware.RequireAuth(r.cfg.JWTSecret)(http.HandlerFunc(handlers.GetBalance(r.db))))
-	mux.Handle("POST /chat", middleware.RequireAuth(r.cfg.JWTSecret)(http.HandlerFunc(handlers.Chat(r.aiClient, r.db))))
+	mux.Handle("POST /chat", middleware.RateLimit(20)(middleware.RequireAuth(r.cfg.JWTSecret)(http.HandlerFunc(handlers.Chat(r.aiClient, r.db)))))
 	mux.Handle("GET /chat/history", middleware.RequireAuth(r.cfg.JWTSecret)(http.HandlerFunc(handlers.GetChatHistory(r.db))))
 
 	return mux
