@@ -3,6 +3,7 @@ package handlers
 import (
 	"database/sql"
 	"encoding/json"
+	"log"
 	"net/http"
 
 	"github.com/yourname/pocket-api/internal/ai"
@@ -29,12 +30,14 @@ func Chat(aiClient *ai.Client, db *sql.DB) http.HandlerFunc {
 
 		systemPrompt, err := ai.BuildFinancialContext(db, userID)
 		if err != nil {
+			log.Printf("chat error: %v", err)
 			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "internal server error"})
 			return
 		}
 
 		history, err := queries.GetChatHistory(db, userID, 20)
 		if err != nil {
+			log.Printf("chat error: %v", err)
 			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "internal server error"})
 			return
 		}
@@ -45,17 +48,20 @@ func Chat(aiClient *ai.Client, db *sql.DB) http.HandlerFunc {
 		}
 
 		if err := queries.SaveChatMessage(db, userID, "user", body.Message); err != nil {
+			log.Printf("chat error: %v", err)
 			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "internal server error"})
 			return
 		}
 
 		response, err := aiClient.Chat(r.Context(), systemPrompt, body.Message, aiHistory)
 		if err != nil {
+			log.Printf("chat error: %v", err)
 			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "internal server error"})
 			return
 		}
 
 		if err := queries.SaveChatMessage(db, userID, "assistant", response); err != nil {
+			log.Printf("chat error: %v", err)
 			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "internal server error"})
 			return
 		}
@@ -73,6 +79,7 @@ func GetChatHistory(db *sql.DB) http.HandlerFunc {
 
 		history, err := queries.GetChatHistory(db, userID, 50)
 		if err != nil {
+			log.Printf("chat error: %v", err)
 			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "internal server error"})
 			return
 		}

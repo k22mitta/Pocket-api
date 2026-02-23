@@ -23,7 +23,7 @@ func NewClient(ctx context.Context, apiKey string) (*Client, error) {
 	if err != nil {
 		return nil, fmt.Errorf("creating gemini client: %w", err)
 	}
-	return &Client{inner: c, model: "gemini-2.0-flash"}, nil
+	return &Client{inner: c, model: "gemini-2.5-flash"}, nil
 }
 
 func (c *Client) Close() {
