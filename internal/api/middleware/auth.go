@@ -14,6 +14,7 @@ type contextKey string
 const (
 	UserIDKey    contextKey = "userID"
 	UserEmailKey contextKey = "userEmail"
+	UserNameKey  contextKey = "userName"
 )
 
 func RequireAuth(jwtSecret string) func(http.Handler) http.Handler {
@@ -50,9 +51,11 @@ func RequireAuth(jwtSecret string) func(http.Handler) http.Handler {
 
 			userID, _ := claims["sub"].(string)
 			email, _ := claims["email"].(string)
+			name, _ := claims["name"].(string)
 
 			ctx := context.WithValue(r.Context(), UserIDKey, userID)
 			ctx = context.WithValue(ctx, UserEmailKey, email)
+			ctx = context.WithValue(ctx, UserNameKey, name)
 
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})
@@ -66,6 +69,11 @@ func UserIDFromContext(ctx context.Context) string {
 
 func UserEmailFromContext(ctx context.Context) string {
 	v, _ := ctx.Value(UserEmailKey).(string)
+	return v
+}
+
+func UserNameFromContext(ctx context.Context) string {
+	v, _ := ctx.Value(UserNameKey).(string)
 	return v
 }
 

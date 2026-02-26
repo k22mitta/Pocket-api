@@ -6,21 +6,21 @@ import (
 	"github.com/yourname/pocket-api/internal/models"
 )
 
-func CreateUser(db *sql.DB, email, passwordHash string) (models.User, error) {
+func CreateUser(db *sql.DB, email, passwordHash, name string) (models.User, error) {
 	var u models.User
 	err := db.QueryRow(
-		`INSERT INTO users (email, password_hash) VALUES ($1, $2)
-		 RETURNING id, email, password_hash, created_at, updated_at`,
-		email, passwordHash,
-	).Scan(&u.ID, &u.Email, &u.PasswordHash, &u.CreatedAt, &u.UpdatedAt)
+		`INSERT INTO users (email, password_hash, name) VALUES ($1, $2, $3)
+		 RETURNING id, email, name, password_hash, created_at, updated_at`,
+		email, passwordHash, name,
+	).Scan(&u.ID, &u.Email, &u.Name, &u.PasswordHash, &u.CreatedAt, &u.UpdatedAt)
 	return u, err
 }
 
 func GetUserByEmail(db *sql.DB, email string) (models.User, error) {
 	var u models.User
 	err := db.QueryRow(
-		`SELECT id, email, password_hash, created_at, updated_at FROM users WHERE email = $1`,
+		`SELECT id, email, name, password_hash, created_at, updated_at FROM users WHERE email = $1`,
 		email,
-	).Scan(&u.ID, &u.Email, &u.PasswordHash, &u.CreatedAt, &u.UpdatedAt)
+	).Scan(&u.ID, &u.Email, &u.Name, &u.PasswordHash, &u.CreatedAt, &u.UpdatedAt)
 	return u, err
 }

@@ -46,6 +46,7 @@ func Login(db *sql.DB, jwtSecret string) http.HandlerFunc {
 		token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
 			"sub":   user.ID,
 			"email": user.Email,
+			"name":  user.Name,
 			"exp":   now.Add(7 * 24 * time.Hour).Unix(),
 			"iat":   now.Unix(),
 		})
@@ -58,7 +59,7 @@ func Login(db *sql.DB, jwtSecret string) http.HandlerFunc {
 
 		writeJSON(w, http.StatusOK, map[string]any{
 			"token": signed,
-			"user":  map[string]string{"id": user.ID, "email": user.Email},
+			"user":  map[string]string{"id": user.ID, "email": user.Email, "name": user.Name},
 		})
 	}
 }

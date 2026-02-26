@@ -45,8 +45,8 @@ func main() {
 	srv := &http.Server{
 		Addr:         ":" + cfg.Port,
 		Handler:      middleware.Logger()(middleware.CORS()(api.NewRouter(cfg, database, plaidClient, aiClient))),
-		ReadTimeout:  10 * time.Second,
-		WriteTimeout: 10 * time.Second,
+		ReadTimeout:  30 * time.Second,
+		WriteTimeout: 60 * time.Second,
 	}
 
 	stopSync := plaidclient.StartSyncScheduler(database, plaidClient, 6*time.Hour)

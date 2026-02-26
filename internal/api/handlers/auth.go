@@ -15,6 +15,7 @@ func Register(db *sql.DB) http.HandlerFunc {
 		var body struct {
 			Email    string `json:"email"`
 			Password string `json:"password"`
+			Name     string `json:"name"`
 		}
 		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid request body"})
@@ -22,6 +23,10 @@ func Register(db *sql.DB) http.HandlerFunc {
 		}
 		if body.Email == "" || body.Password == "" {
 			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "email and password are required"})
+			return
+		}
+		if body.Name == "" {
+			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "name is required"})
 			return
 		}
 		if len(body.Password) < 8 {
@@ -35,7 +40,7 @@ func Register(db *sql.DB) http.HandlerFunc {
 			return
 		}
 
-		user, err := queries.CreateUser(db, body.Email, string(hash))
+		user, err := queries.CreateUser(db, body.Email, string(hash), body.Name)
 		if err != nil {
 			if pqErr, ok := err.(*pq.Error); ok && pqErr.Code == "23505" {
 				writeJSON(w, http.StatusConflict, map[string]string{"error": "email already in use"})
@@ -45,7 +50,7 @@ func Register(db *sql.DB) http.HandlerFunc {
 			return
 		}
 
-		writeJSON(w, http.StatusCreated, map[string]string{"id": user.ID, "email": user.Email})
+		writeJSON(w, http.StatusCreated, map[string]string{"id": user.ID, "email": user.Email, "name": user.Name})
 	}
 }
 
