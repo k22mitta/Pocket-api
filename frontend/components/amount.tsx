@@ -3,7 +3,6 @@
 import { useEffect, useState } from 'react'
 import { cn } from '@/lib/utils'
 
-// ─── Formatter ──────────────────────────────────────────────────────────────
 export function formatMoney(
   amount: number,
   opts?: { compact?: boolean; showSign?: boolean },
@@ -23,7 +22,6 @@ export function formatMoney(
   return amount < 0 ? `−${formatted}` : formatted
 }
 
-// ─── Animated count-up hook ─────────────────────────────────────────────────
 export function useCountUp(target: number, duration = 1_100) {
   const [display, setDisplay] = useState(0)
 
@@ -52,7 +50,6 @@ export function useCountUp(target: number, duration = 1_100) {
   return display
 }
 
-// ─── Large hero balance (Fraunces serif, animated) ──────────────────────────
 interface HeroAmountProps {
   amount: number
   className?: string
@@ -66,7 +63,7 @@ export function HeroAmount({ amount, className, animate = true }: HeroAmountProp
   return (
     <span
       className={cn(
-        'money font-serif font-semibold tracking-tight text-foreground',
+        'money font-semibold tracking-tight text-foreground',
         className,
       )}
     >
@@ -75,7 +72,6 @@ export function HeroAmount({ amount, className, animate = true }: HeroAmountProp
   )
 }
 
-// ─── Inline amount for ledger rows ──────────────────────────────────────────
 interface LedgerAmountProps {
   amount: number
   className?: string

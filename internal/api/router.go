@@ -32,7 +32,7 @@ func NewRouter(cfg config.Config, db *sql.DB, plaidClient *plaidclient.Client, a
 	mux.Handle("POST /plaid/exchange", middleware.RequireAuth(r.cfg.JWTSecret)(http.HandlerFunc(handlers.ExchangeToken(r.plaidClient, r.db))))
 	mux.Handle("POST /plaid/sync", middleware.RequireAuth(r.cfg.JWTSecret)(http.HandlerFunc(handlers.SyncAll(r.plaidClient, r.db))))
 	mux.Handle("GET /accounts", middleware.RequireAuth(r.cfg.JWTSecret)(http.HandlerFunc(handlers.GetAccounts(r.db))))
-	mux.Handle("DELETE /accounts/{id}", middleware.RequireAuth(r.cfg.JWTSecret)(http.HandlerFunc(handlers.DeleteAccount(r.plaidClient, r.db))))
+	mux.Handle("DELETE /plaid/items/{id}", middleware.RequireAuth(r.cfg.JWTSecret)(http.HandlerFunc(handlers.DeletePlaidItem(r.plaidClient, r.db))))
 	mux.Handle("GET /transactions", middleware.RequireAuth(r.cfg.JWTSecret)(http.HandlerFunc(handlers.GetTransactions(r.db))))
 	mux.Handle("POST /budgets", middleware.RequireAuth(r.cfg.JWTSecret)(http.HandlerFunc(handlers.CreateBudget(r.db))))
 	mux.Handle("GET /budgets", middleware.RequireAuth(r.cfg.JWTSecret)(http.HandlerFunc(handlers.GetBudgets(r.db))))

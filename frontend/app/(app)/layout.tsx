@@ -6,18 +6,17 @@ import { useAuth } from '@/lib/auth-context'
 import Nav from '@/components/nav'
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
-  const { isAuthenticated } = useAuth()
+  const { isAuthenticated, hydrated } = useAuth()
   const router = useRouter()
 
   useEffect(() => {
-    if (!isAuthenticated) {
+    if (hydrated && !isAuthenticated) {
       router.replace('/login')
     }
-  }, [isAuthenticated, router])
+  }, [isAuthenticated, hydrated, router])
 
-  if (!isAuthenticated) {
-    return null
-  }
+  // Wait for localStorage to be read before showing content or redirecting
+  if (!hydrated || !isAuthenticated) return null
 
   return (
     <div className="flex h-screen overflow-hidden bg-background">

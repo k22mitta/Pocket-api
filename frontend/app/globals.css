@@ -47,7 +47,7 @@
 :root {
   color-scheme: light;
 
-  /* ── Pocket Design System ─────────────────────────── */
+  /* Pocket Design System */
   /* Paper background */
   --background: #F7F5F0;
   --foreground: #0B1210;
@@ -109,10 +109,12 @@
   }
 }
 
-/* Monospaced/tabular numerals — used on all money figures */
+/* Tabular, lining numerals — used on all money figures. Always Inter, never
+   the Fraunces display serif (reserved for the wordmark only). */
 .money {
-  font-variant-numeric: tabular-nums;
-  font-feature-settings: 'tnum' 1;
+  font-family: var(--font-sans);
+  font-variant-numeric: tabular-nums lining-nums;
+  font-feature-settings: 'tnum' 1, 'lnum' 1;
 }
 
 /* Hairline dividers — ledger-line style */

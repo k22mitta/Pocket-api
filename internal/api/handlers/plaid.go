@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"log"
 	"net/http"
 
@@ -123,6 +124,41 @@ func SyncAll(pc *plaidclient.Client, db *sql.DB) http.HandlerFunc {
 		}
 
 		writeJSON(w, http.StatusOK, map[string]int{"synced": synced})
+	}
+}
+
+// DeletePlaidItem unlinks a bank connection: it revokes the item with Plaid
+// (best-effort — a revoke failure doesn't block the local delete, since the
+// user should still be able to remove a stale or already-revoked connection)
+// then deletes the plaid_items row, which cascades to every account and
+// transaction under it. {id} is the plaid_items row ID, not an account ID —
+// one connection can carry several accounts (e.g. checking + savings from
+// the same bank), and unlinking removes all of them together.
+func DeletePlaidItem(pc *plaidclient.Client, db *sql.DB) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		userID := middleware.UserIDFromContext(r.Context())
+		itemID := r.PathValue("id")
+
+		item, err := queries.GetPlaidItemByID(db, itemID, userID)
+		if err != nil {
+			if errors.Is(err, sql.ErrNoRows) {
+				writeJSON(w, http.StatusNotFound, map[string]string{"error": "not found"})
+				return
+			}
+			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "internal server error"})
+			return
+		}
+
+		if err := plaidclient.RemoveItem(context.Background(), pc, item.AccessToken); err != nil {
+			log.Printf("plaid: failed to revoke item %s: %v", item.ItemID, err)
+		}
+
+		if err := queries.DeletePlaidItem(db, itemID, userID); err != nil {
+			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "internal server error"})
+			return
+		}
+
+		writeJSON(w, http.StatusOK, map[string]bool{"success": true})
 	}
 }
 

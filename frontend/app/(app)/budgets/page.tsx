@@ -1,14 +1,12 @@
 'use client'
 
 import { useState } from 'react'
-import useSWR, { useSWRConfig } from 'swr'
-import { Plus, X, Check, Pencil } from 'lucide-react'
+import useSWR from 'swr'
+import { ChevronDown, Plus, X, Check, Pencil, Trash2 } from 'lucide-react'
 import { useAuth } from '@/lib/auth-context'
-import { api, type Budget } from '@/lib/api'
-import { MOCK_BUDGETS } from '@/lib/mock-data'
+import { api, CATEGORIES, type Budget } from '@/lib/api'
 import { formatMoney } from '@/components/amount'
 
-// ─── Budget progress bar ─────────────────────────────────────────────────────
 interface ProgressBarProps {
   spent: number
   limit: number
@@ -40,21 +38,48 @@ function ProgressBar({ spent, limit }: ProgressBarProps) {
   )
 }
 
-// ─── Inline edit row ─────────────────────────────────────────────────────────
 interface EditLimitRowProps {
   budget: Budget
   onSave: (id: string, newLimit: number) => void
+  onDelete: (id: string) => void
   onCancel: () => void
 }
 
-function EditLimitRow({ budget, onSave, onCancel }: EditLimitRowProps) {
-  const [value, setValue] = useState(String(budget.limit))
+function EditLimitRow({ budget, onSave, onDelete, onCancel }: EditLimitRowProps) {
+  const [value, setValue] = useState(String(budget.amountLimit))
+  const [confirmingDelete, setConfirmingDelete] = useState(false)
 
   function handleSave() {
     const num = parseFloat(value)
     if (!isNaN(num) && num > 0) {
       onSave(budget.id, num)
     }
+  }
+
+  if (confirmingDelete) {
+    return (
+      <div className="bg-muted px-3 py-3">
+        <p className="mb-2 text-xs text-muted-foreground">
+          Delete the{' '}
+          <strong className="text-foreground">{budget.category}</strong> budget?
+          This can&apos;t be undone.
+        </p>
+        <div className="flex gap-2">
+          <button
+            onClick={() => onDelete(budget.id)}
+            className="flex items-center gap-1.5 rounded bg-destructive px-3 py-2 text-xs font-medium text-primary-foreground transition-all duration-150 hover:opacity-90"
+          >
+            <Trash2 size={12} /> Delete
+          </button>
+          <button
+            onClick={() => setConfirmingDelete(false)}
+            className="flex items-center gap-1.5 rounded border border-border px-3 py-2 text-xs text-muted-foreground transition-all duration-150 hover:text-foreground"
+          >
+            <X size={12} /> Cancel
+          </button>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -89,6 +114,12 @@ function EditLimitRow({ budget, onSave, onCancel }: EditLimitRowProps) {
           <Check size={12} /> Save
         </button>
         <button
+          onClick={() => setConfirmingDelete(true)}
+          className="flex items-center gap-1.5 rounded border border-border px-3 py-2 text-xs text-muted-foreground transition-all duration-150 hover:text-destructive"
+        >
+          <Trash2 size={12} /> Delete
+        </button>
+        <button
           onClick={onCancel}
           className="flex items-center gap-1.5 rounded border border-border px-3 py-2 text-xs text-muted-foreground transition-all duration-150 hover:text-foreground"
         >
@@ -99,7 +130,6 @@ function EditLimitRow({ budget, onSave, onCancel }: EditLimitRowProps) {
   )
 }
 
-// ─── Add budget form ──────────────────────────────────────────────────────────
 interface AddBudgetFormProps {
   onSave: (category: string, limit: number) => void
   onCancel: () => void
@@ -107,14 +137,14 @@ interface AddBudgetFormProps {
 }
 
 function AddBudgetForm({ onSave, onCancel, existingCategories }: AddBudgetFormProps) {
-  const [category, setCategory] = useState('')
+  const availableCategories = CATEGORIES.filter(c => !existingCategories.includes(c))
+  const [category, setCategory] = useState<string>(availableCategories[0] ?? '')
   const [limit, setLimit] = useState('')
 
   function handleSave() {
     const num = parseFloat(limit)
-    const cat = category.trim()
-    if (!cat || isNaN(num) || num <= 0) return
-    onSave(cat, num)
+    if (!category || isNaN(num) || num <= 0) return
+    onSave(category, num)
   }
 
   return (
@@ -123,14 +153,20 @@ function AddBudgetForm({ onSave, onCancel, existingCategories }: AddBudgetFormPr
         New budget
       </p>
       <div className="flex flex-col gap-2 sm:flex-row">
-        <input
-          type="text"
-          placeholder="Category"
-          value={category}
-          onChange={e => setCategory(e.target.value)}
-          className="flex-1 rounded border border-input bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
-          autoFocus
-        />
+        <div className="relative flex-1">
+          <select
+            value={category}
+            onChange={e => setCategory(e.target.value)}
+            className="w-full appearance-none rounded border border-input bg-background px-3 py-2 text-sm text-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+            aria-label="Category"
+            autoFocus
+          >
+            {availableCategories.map(c => (
+              <option key={c} value={c}>{c}</option>
+            ))}
+          </select>
+          <ChevronDown size={13} className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
+        </div>
         <div className="relative">
           <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
             $
@@ -168,70 +204,66 @@ function AddBudgetForm({ onSave, onCancel, existingCategories }: AddBudgetFormPr
   )
 }
 
-// ─── Page ─────────────────────────────────────────────────────────────────────
 export default function BudgetsPage() {
-  const { token, isDemo } = useAuth()
-  const { mutate } = useSWRConfig()
+  const { token } = useAuth()
 
   const [editingId, setEditingId] = useState<string | null>(null)
   const [addingNew, setAddingNew] = useState(false)
-  const [localBudgets, setLocalBudgets] = useState<Budget[]>([])
 
-  const { data: fetched, error } = useSWR(
-    !isDemo && token ? ['budgets', token] : null,
+  const { data: fetched, error, mutate } = useSWR(
+    token ? ['budgets', token] : null,
     ([, t]) => api.budgets(t),
-    { fallbackData: isDemo ? MOCK_BUDGETS : undefined },
   )
 
-  // Merge server/demo budgets with any locally added ones
-  const baseBudgets = fetched ?? (isDemo ? MOCK_BUDGETS : [])
-  const budgets: Budget[] = [...baseBudgets, ...localBudgets]
+  const budgets: Budget[] = fetched ?? []
 
-  const totalSpent  = budgets.reduce((s, b) => s + b.spent,  0)
-  const totalLimits = budgets.reduce((s, b) => s + b.limit, 0)
-  const overBudget  = budgets.filter(b => b.spent >= b.limit)
+  const totalSpent  = budgets.reduce((s, b) => s + b.spent,        0)
+  const totalLimits = budgets.reduce((s, b) => s + b.amountLimit, 0)
+  const overBudget  = budgets.filter(b => b.spent >= b.amountLimit)
 
-  function handleSaveLimit(id: string, newLimit: number) {
-    if (isDemo) {
-      // mutate the local-override list
-      setLocalBudgets(prev =>
-        prev.map(b => (b.id === id ? { ...b, limit: newLimit } : b)),
-      )
-      // also mutate base if it's in base
-    } else {
-      // PATCH /budgets/:id { limit: newLimit }
-      mutate(['budgets', token])
+  async function handleSaveLimit(id: string, newLimit: number) {
+    if (!token) return
+    try {
+      await api.updateBudget(token, id, newLimit)
+      mutate()
+    } catch {
+      // keep editing open on error
+      return
     }
     setEditingId(null)
   }
 
-  function handleAddBudget(category: string, limit: number) {
-    const newBudget: Budget = {
-      id: `bud_${Date.now()}`,
-      category,
-      limit,
-      spent: 0,
+  async function handleDeleteBudget(id: string) {
+    if (!token) return
+    try {
+      await api.deleteBudget(token, id)
+      mutate()
+    } catch {
+      return
     }
-    if (isDemo) {
-      setLocalBudgets(prev => [...prev, newBudget])
-    } else {
-      // POST /budgets { category, limit }
-      mutate(['budgets', token])
+    setEditingId(null)
+  }
+
+  async function handleAddBudget(category: string, limit: number) {
+    if (!token) return
+    try {
+      await api.createBudget(token, category, limit)
+      mutate()
+    } catch {
+      return
     }
     setAddingNew(false)
   }
 
   return (
     <div className="mx-auto max-w-2xl px-8 py-12">
-
-      {/* ── Header ─────────────────────────────────────────── */}
       <header className="mb-10 border-b border-border pb-8">
         <p className="mb-2 text-xs uppercase tracking-widest text-muted-foreground">
           Budgets
         </p>
         <div className="flex items-end justify-between gap-4">
           <div>
-            <h1 className="font-serif text-5xl font-semibold tracking-tight text-foreground">
+            <h1 className="money text-5xl font-semibold tracking-tight text-foreground">
               {totalLimits > 0
                 ? formatMoney(totalSpent)
                 : '—'}
@@ -250,7 +282,6 @@ export default function BudgetsPage() {
             )}
           </div>
 
-          {/* Overall bar */}
           {totalLimits > 0 && (
             <div className="hidden w-36 sm:block">
               <ProgressBar spent={totalSpent} limit={totalLimits} />
@@ -262,14 +293,12 @@ export default function BudgetsPage() {
         </div>
       </header>
 
-      {/* ── API error ──────────────────────────────────────── */}
-      {error && !isDemo && (
+      {error && (
         <div className="mb-6 rounded border border-border bg-muted px-4 py-3 text-sm text-muted-foreground">
           Could not load budgets. Check that your server is running.
         </div>
       )}
 
-      {/* ── Column headers ─────────────────────────────────── */}
       {budgets.length > 0 && (
         <div className="mb-1 flex items-center gap-4 border-b border-border pb-2">
           <span className="flex-1 text-[10px] uppercase tracking-widest text-muted-foreground">
@@ -285,32 +314,28 @@ export default function BudgetsPage() {
         </div>
       )}
 
-      {/* ── Budget rows ────────────────────────────────────── */}
       <div role="list" aria-label="Budget categories">
         {budgets.map(budget => {
-          const remaining = budget.limit - budget.spent
+          const remaining = budget.amountLimit - budget.spent
           const isOver    = remaining < 0
 
           return (
             <div key={budget.id} role="listitem">
               <div className="flex items-center gap-4 py-4 ledger-divide">
-                {/* Category + progress bar */}
                 <div className="flex-1 min-w-0">
                   <p className="mb-1.5 text-sm text-foreground">{budget.category}</p>
-                  <ProgressBar spent={budget.spent} limit={budget.limit} />
+                  <ProgressBar spent={budget.spent} limit={budget.amountLimit} />
                 </div>
 
-                {/* Spent / Limit */}
                 <div className="hidden w-32 flex-shrink-0 text-right sm:block">
                   <p className="money text-sm text-foreground">
                     {formatMoney(budget.spent)}
                   </p>
                   <p className="money text-xs text-muted-foreground">
-                    of {formatMoney(budget.limit)}
+                    of {formatMoney(budget.amountLimit)}
                   </p>
                 </div>
 
-                {/* Remaining */}
                 <div className="w-20 flex-shrink-0 text-right">
                   <p
                     className={`money text-sm font-medium ${
@@ -326,7 +351,6 @@ export default function BudgetsPage() {
                   </p>
                 </div>
 
-                {/* Edit button */}
                 <button
                   onClick={() => setEditingId(editingId === budget.id ? null : budget.id)}
                   className="w-6 flex-shrink-0 text-muted-foreground transition-colors duration-150 hover:text-foreground"
@@ -341,11 +365,11 @@ export default function BudgetsPage() {
                 </button>
               </div>
 
-              {/* Inline limit editor */}
               {editingId === budget.id && (
                 <EditLimitRow
                   budget={budget}
                   onSave={handleSaveLimit}
+                  onDelete={handleDeleteBudget}
                   onCancel={() => setEditingId(null)}
                 />
               )}
@@ -360,7 +384,6 @@ export default function BudgetsPage() {
         )}
       </div>
 
-      {/* ── Add new budget ─────────────────────────────────── */}
       <div className="mt-6">
         {addingNew ? (
           <AddBudgetForm
@@ -368,7 +391,7 @@ export default function BudgetsPage() {
             onCancel={() => setAddingNew(false)}
             existingCategories={budgets.map(b => b.category)}
           />
-        ) : (
+        ) : budgets.length < CATEGORIES.length ? (
           <button
             onClick={() => setAddingNew(true)}
             className="flex items-center gap-2 text-sm text-muted-foreground transition-colors duration-150 hover:text-foreground"
@@ -376,6 +399,10 @@ export default function BudgetsPage() {
             <Plus size={15} strokeWidth={1.75} aria-hidden="true" />
             Add a budget
           </button>
+        ) : (
+          <p className="text-xs text-muted-foreground">
+            A budget already exists for every category.
+          </p>
         )}
       </div>
     </div>

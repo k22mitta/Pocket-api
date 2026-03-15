@@ -97,13 +97,16 @@ func SyncTransactions(ctx context.Context, client *Client, db *sql.DB, userID st
 			}
 		}
 
+		amount := pt.GetAmount()
+		category := categorizeTransaction(catSlice, amount, pt.GetName())
+
 		t := models.Transaction{
 			UserID:             userID,
 			AccountID:          accountID,
 			PlaidTransactionID: pt.GetTransactionId(),
 			Name:               pt.GetName(),
-			Amount:             pt.GetAmount(),
-			Category:           NormalizeCategory(catSlice),
+			Amount:             amount,
+			Category:           category,
 			PlaidCategory:      plaidCat,
 			Date:               date,
 			Pending:            pt.GetPending(),
@@ -113,10 +116,37 @@ func SyncTransactions(ctx context.Context, client *Client, db *sql.DB, userID st
 			t.MerchantName = name
 		}
 
-		if err := queries.UpsertTransaction(db, t); err != nil {
+		if _, err := queries.UpsertTransaction(db, t); err != nil {
 			return fmt.Errorf("upserting transaction %s: %w", t.PlaidTransactionID, err)
 		}
 	}
 
 	return nil
+}
+
+// categorizeTransaction combines Plaid's raw category with a sign check:
+// positive amount = money leaving the account (Plaid's own convention), so a
+// transaction can only be Income if it's actually negative (an inflow).
+// Without this, Plaid's coarse "payroll"/"deposit" keyword categories get
+// assigned regardless of direction, and an outflow-direction transaction
+// (e.g. an ACH debit that happens to be tagged similarly to a payroll
+// deposit) renders as a paycheck the user never received.
+//
+// The merchant-name fallback (CategorizeByMerchant) has the exact same
+// keyword-only blind spot — e.g. a merchant literally named "CD DEPOSIT
+// .INITIAL." matches its "deposit" keyword and also returns Income with no
+// sign check. So the guard is re-applied after the fallback too: no code
+// path here can ever return Income for a non-negative amount.
+func categorizeTransaction(plaidCategories []string, amount float64, name string) string {
+	category := NormalizeCategory(plaidCategories)
+	if category == "Income" && amount >= 0 {
+		if isTransferLike(plaidCategories) {
+			return "Transfers"
+		}
+		category = CategorizeByMerchant(name)
+		if category == "Income" {
+			category = "Other"
+		}
+	}
+	return category
 }

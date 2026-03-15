@@ -30,7 +30,6 @@ export default function Nav() {
       className="flex w-52 flex-shrink-0 flex-col bg-foreground text-background"
       aria-label="Main navigation"
     >
-      {/* Wordmark */}
       <div className="px-6 pb-6 pt-8">
         <span className="font-serif text-xl font-semibold tracking-tight text-background">
           Pocket
@@ -43,7 +42,6 @@ export default function Nav() {
         )}
       </div>
 
-      {/* Links */}
       <ul className="flex flex-col gap-0.5 px-3" role="list">
         {NAV_ITEMS.map(({ href, label, icon: Icon }) => {
           const active = pathname === href
@@ -67,7 +65,6 @@ export default function Nav() {
         })}
       </ul>
 
-      {/* Account / Sign out */}
       <div className="mt-auto border-t border-white/8 px-3 py-4">
         {email && (
           <p className="truncate px-3 pb-2 text-[11px] text-background/40">

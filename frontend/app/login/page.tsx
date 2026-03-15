@@ -1,21 +1,31 @@
 'use client'
 
-import { useState, type FormEvent } from 'react'
+import { useState, useEffect, type FormEvent } from 'react'
+import { useRouter } from 'next/navigation'
 import { useAuth } from '@/lib/auth-context'
 import { ApiError } from '@/lib/api'
 
 type Mode = 'signin' | 'signup'
 
 export default function LoginPage() {
-  const { login, signup, loginDemo, isAuthenticated } = useAuth()
+  const router = useRouter()
+  const { login, signup, loginDemo, isAuthenticated, hydrated } = useAuth()
   const [mode, setMode] = useState<Mode>('signin')
   const [email, setEmail] = useState('')
+  const [name, setName] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
+  const [demoLoading, setDemoLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  // If somehow already authenticated, this handles the redirect edge case
-  if (isAuthenticated) return null
+  useEffect(() => {
+    if (hydrated && isAuthenticated) {
+      router.replace('/dashboard')
+    }
+  }, [hydrated, isAuthenticated, router])
+
+  // Hold until localStorage is read; redirect if already logged in
+  if (!hydrated || isAuthenticated) return null
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
@@ -25,7 +35,7 @@ export default function LoginPage() {
       if (mode === 'signin') {
         await login(email, password)
       } else {
-        await signup(email, password)
+        await signup(email, password, name)
       }
     } catch (err) {
       if (err instanceof ApiError) {
@@ -50,12 +60,10 @@ export default function LoginPage() {
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
       <div className="w-full max-w-sm">
 
-        {/* Wordmark */}
         <h1 className="mb-10 font-serif text-4xl font-semibold tracking-tight text-foreground">
           Pocket
         </h1>
 
-        {/* Mode toggle */}
         <div className="mb-8 flex gap-0 border-b border-border">
           <button
             type="button"
@@ -83,8 +91,24 @@ export default function LoginPage() {
           </button>
         </div>
 
-        {/* Form */}
         <form onSubmit={handleSubmit} className="flex flex-col gap-4" noValidate>
+          {mode === 'signup' && (
+            <div className="flex flex-col gap-1.5">
+              <label htmlFor="name" className="text-sm text-foreground">
+                Name
+              </label>
+              <input
+                id="name"
+                type="text"
+                required
+                autoComplete="name"
+                value={name}
+                onChange={e => setName(e.target.value)}
+                placeholder="Your name"
+                className="rounded border border-input bg-background px-3 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary transition-all duration-150"
+              />
+            </div>
+          )}
           <div className="flex flex-col gap-1.5">
             <label htmlFor="email" className="text-sm text-foreground">
               Email address
@@ -117,14 +141,12 @@ export default function LoginPage() {
             />
           </div>
 
-          {/* Error */}
           {error && (
             <p role="alert" className="rounded bg-red-50 px-3 py-2.5 text-sm text-destructive border border-red-200">
               {error}
             </p>
           )}
 
-          {/* Submit */}
           <button
             type="submit"
             disabled={loading}
@@ -136,16 +158,26 @@ export default function LoginPage() {
           </button>
         </form>
 
-        {/* Demo link */}
         <div className="mt-8 border-t border-border pt-6">
           <p className="text-sm text-muted-foreground">
-            No backend set up yet?{' '}
+            Want to explore first?{' '}
             <button
               type="button"
-              onClick={loginDemo}
-              className="text-foreground underline underline-offset-4 hover:text-primary transition-colors duration-150"
+              disabled={demoLoading}
+              onClick={async () => {
+                setError(null)
+                setDemoLoading(true)
+                try {
+                  await loginDemo()
+                } catch {
+                  setError('Could not start demo. Check that your API is running.')
+                } finally {
+                  setDemoLoading(false)
+                }
+              }}
+              className="text-foreground underline underline-offset-4 hover:text-primary transition-colors duration-150 disabled:opacity-50"
             >
-              View demo
+              {demoLoading ? 'Starting…' : 'View demo'}
             </button>
           </p>
         </div>

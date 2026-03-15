@@ -4,6 +4,7 @@ import (
 	"database/sql"
 
 	"github.com/yourname/pocket-api/internal/models"
+	"github.com/yourname/pocket-api/internal/money"
 )
 
 func CreateBudget(db *sql.DB, userID, category, period string, limit float64) (models.Budget, error) {
@@ -28,7 +29,8 @@ func GetBudgetsByUserID(db *sql.DB, userID string) ([]models.BudgetWithSpent, er
 		   AND t.amount > 0
 		   AND DATE_TRUNC('month', t.date) = DATE_TRUNC('month', NOW())
 		 WHERE b.user_id = $1
-		 GROUP BY b.id`,
+		 GROUP BY b.id
+		 ORDER BY b.created_at ASC, b.id ASC`,
 		userID,
 	)
 	if err != nil {
@@ -45,7 +47,8 @@ func GetBudgetsByUserID(db *sql.DB, userID string) ([]models.BudgetWithSpent, er
 		); err != nil {
 			return nil, err
 		}
-		bws.Remaining = bws.AmountLimit - bws.Spent
+		bws.Spent = money.Round2(bws.Spent)
+		bws.Remaining = money.Round2(bws.AmountLimit - bws.Spent)
 		budgets = append(budgets, bws)
 	}
 	return budgets, rows.Err()

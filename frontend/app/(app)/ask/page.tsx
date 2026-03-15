@@ -1,42 +1,16 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { useChat } from '@ai-sdk/react'
-import { DefaultChatTransport } from 'ai'
-import { ArrowUp, Sparkles } from 'lucide-react'
+import { AlertCircle, ArrowUp, RotateCw, Sparkles } from 'lucide-react'
 import { useAuth } from '@/lib/auth-context'
-import { MOCK_SUMMARY, MOCK_ACCOUNTS, MOCK_TRANSACTIONS, MOCK_BUDGETS } from '@/lib/mock-data'
+import { api, ApiError } from '@/lib/api'
 
-// ─── Build financial context string from mock data ───────────────────────────
-function buildFinancialContext() {
-  const accountLines = MOCK_ACCOUNTS.map(
-    a => `  - ${a.name} (${a.type}): $${a.balance.toLocaleString('en-US', { minimumFractionDigits: 2 })}`,
-  ).join('\n')
-
-  const txLines = MOCK_TRANSACTIONS.slice(0, 12)
-    .map(t => `  - ${t.date} | ${t.merchant} | ${t.category} | ${t.amount >= 0 ? '+' : ''}$${t.amount.toLocaleString('en-US', { minimumFractionDigits: 2 })}`)
-    .join('\n')
-
-  const budgetLines = MOCK_BUDGETS.map(
-    b => `  - ${b.category}: $${b.spent} spent / $${b.limit} limit (${Math.round((b.spent / b.limit) * 100)}%)`,
-  ).join('\n')
-
-  return `SUMMARY
-  Total balance: $${MOCK_SUMMARY.totalBalance.toLocaleString('en-US', { minimumFractionDigits: 2 })}
-  This month's spend: $${MOCK_SUMMARY.monthlySpend.toLocaleString('en-US', { minimumFractionDigits: 2 })}
-  Last month's spend: $${MOCK_SUMMARY.lastMonthSpend.toLocaleString('en-US', { minimumFractionDigits: 2 })}
-
-ACCOUNTS
-${accountLines}
-
-RECENT TRANSACTIONS (latest 12)
-${txLines}
-
-BUDGETS
-${budgetLines}`
+interface Message {
+  id: string
+  role: 'user' | 'assistant'
+  content: string
 }
 
-// ─── Suggested prompts shown on empty state ──────────────────────────────────
 const SUGGESTIONS = [
   'How much did I spend on dining this month?',
   'Which budget am I closest to exceeding?',
@@ -44,25 +18,12 @@ const SUGGESTIONS = [
   "How does this month's spending compare to last month?",
 ]
 
-// ─── Message bubble ──────────────────────────────────────────────────────────
-interface BubbleProps {
-  role: 'user' | 'assistant'
-  parts: Array<{ type: string; text?: string }>
-}
-
-function Bubble({ role, parts }: BubbleProps) {
-  const text = parts
-    .filter((p): p is { type: 'text'; text: string } => p.type === 'text')
-    .map(p => p.text)
-    .join('')
-
-  if (!text) return null
-
+function Bubble({ role, content }: Pick<Message, 'role' | 'content'>) {
   if (role === 'user') {
     return (
       <div className="flex justify-end">
         <div className="max-w-sm rounded rounded-br-sm bg-primary px-4 py-2.5 text-sm leading-relaxed text-primary-foreground">
-          {text}
+          {content}
         </div>
       </div>
     )
@@ -77,13 +38,12 @@ function Bubble({ role, parts }: BubbleProps) {
         <Sparkles size={13} className="text-background" strokeWidth={1.75} />
       </div>
       <div className="max-w-prose text-sm leading-relaxed text-foreground whitespace-pre-wrap">
-        {text}
+        {content}
       </div>
     </div>
   )
 }
 
-// ─── Typing indicator ────────────────────────────────────────────────────────
 function TypingIndicator() {
   return (
     <div className="flex items-start gap-3">
@@ -103,45 +63,72 @@ function TypingIndicator() {
   )
 }
 
-// ─── Page ─────────────────────────────────────────────────────────────────────
 export default function AskPage() {
-  const { isDemo } = useAuth()
+  const { token } = useAuth()
+  const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState('')
+  const [status, setStatus] = useState<'idle' | 'loading' | 'error'>('idle')
+  const [errorText, setErrorText] = useState<string | null>(null)
+  const [lastFailedMessage, setLastFailedMessage] = useState<string | null>(null)
   const bottomRef = useRef<HTMLDivElement>(null)
 
-  const financialContext = buildFinancialContext()
+  const isLoading = status === 'loading'
 
-  const { messages, sendMessage, status } = useChat({
-    transport: new DefaultChatTransport({
-      api: '/api/ask',
-      prepareSendMessagesRequest: ({ id, messages: msgs }) => ({
-        body: {
-          id,
-          messages: msgs,
-          financialContext: isDemo ? financialContext : undefined,
-        },
-      }),
-    }),
-  })
+  useEffect(() => {
+    if (!token) return
+    api.chatHistory(token)
+      .then(history => {
+        setMessages(history.map(m => ({ id: m.id, role: m.role, content: m.content })))
+      })
+      .catch(() => {
+        // history is a nice-to-have; a fresh conversation is a fine fallback
+      })
+  }, [token])
 
-  const isStreaming = status === 'streaming' || status === 'submitted'
-
-  // Auto-scroll to bottom when messages update
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages, status])
 
+  async function sendToBackend(text: string) {
+    if (!token) return
+    setStatus('loading')
+    setErrorText(null)
+    try {
+      const res = await api.chat(token, text)
+      setMessages(prev => [...prev, { id: `a-${Date.now()}`, role: 'assistant', content: res.response }])
+      setStatus('idle')
+      setLastFailedMessage(null)
+    } catch (err) {
+      setStatus('error')
+      setLastFailedMessage(text)
+      if (err instanceof ApiError && err.status === 429) {
+        setErrorText("You're sending messages a bit too fast. Wait a minute and try again.")
+      } else {
+        setErrorText('Something went wrong reaching Pocket. Check that your API is running.')
+      }
+    }
+  }
+
   function handleSend() {
     const text = input.trim()
-    if (!text || isStreaming) return
-    sendMessage({ text })
+    if (!text || isLoading) return
     setInput('')
+    setMessages(prev => [...prev, { id: `u-${Date.now()}`, role: 'user', content: text }])
+    sendToBackend(text)
+  }
+
+  function handleSuggestion(text: string) {
+    if (isLoading) return
+    setMessages(prev => [...prev, { id: `u-${Date.now()}`, role: 'user', content: text }])
+    sendToBackend(text)
+  }
+
+  function handleRetry() {
+    if (lastFailedMessage && !isLoading) sendToBackend(lastFailedMessage)
   }
 
   return (
     <div className="flex h-full flex-col">
-
-      {/* ── Header ─────────────────────────────────────────── */}
       <header className="flex-shrink-0 border-b border-border px-8 py-6">
         <p className="mb-0.5 text-xs uppercase tracking-widest text-muted-foreground">
           Ask Pocket
@@ -151,11 +138,8 @@ export default function AskPage() {
         </h1>
       </header>
 
-      {/* ── Messages ───────────────────────────────────────── */}
       <div className="flex-1 overflow-y-auto px-8 py-6">
         <div className="mx-auto max-w-2xl space-y-5">
-
-          {/* Empty state */}
           {messages.length === 0 && (
             <div>
               <p className="mb-6 text-sm text-muted-foreground">
@@ -166,10 +150,9 @@ export default function AskPage() {
                 {SUGGESTIONS.map(s => (
                   <button
                     key={s}
-                    onClick={() => {
-                      setInput(s)
-                    }}
-                    className="rounded border border-border bg-background px-4 py-3 text-left text-sm text-muted-foreground transition-all duration-150 hover:border-primary hover:bg-muted hover:text-foreground"
+                    disabled={isLoading}
+                    onClick={() => handleSuggestion(s)}
+                    className="rounded border border-border bg-background px-4 py-3 text-left text-sm text-muted-foreground transition-all duration-150 hover:border-primary hover:bg-muted hover:text-foreground disabled:opacity-50"
                   >
                     {s}
                   </button>
@@ -178,19 +161,34 @@ export default function AskPage() {
             </div>
           )}
 
-          {/* Conversation */}
           {messages.map(msg => (
-            <Bubble key={msg.id} role={msg.role as 'user' | 'assistant'} parts={msg.parts as Array<{ type: string; text?: string }>} />
+            <Bubble key={msg.id} role={msg.role} content={msg.content} />
           ))}
 
-          {/* Typing indicator — show when submitted but not yet streaming */}
-          {status === 'submitted' && <TypingIndicator />}
+          {isLoading && <TypingIndicator />}
+
+          {status === 'error' && errorText && (
+            <div
+              role="alert"
+              className="flex items-center justify-between gap-3 rounded border border-red-200 bg-red-50 px-3 py-2.5 text-sm text-destructive"
+            >
+              <span className="flex items-center gap-2">
+                <AlertCircle size={14} className="flex-shrink-0" aria-hidden="true" />
+                {errorText}
+              </span>
+              <button
+                onClick={handleRetry}
+                className="flex flex-shrink-0 items-center gap-1.5 rounded border border-destructive/30 px-2.5 py-1 text-xs font-medium text-destructive transition-colors duration-150 hover:bg-red-100"
+              >
+                <RotateCw size={12} aria-hidden="true" /> Retry
+              </button>
+            </div>
+          )}
 
           <div ref={bottomRef} />
         </div>
       </div>
 
-      {/* ── Input ──────────────────────────────────────────── */}
       <div className="flex-shrink-0 border-t border-border px-8 py-5">
         <div className="mx-auto max-w-2xl">
           <form
@@ -205,7 +203,6 @@ export default function AskPage() {
                 value={input}
                 onChange={e => {
                   setInput(e.target.value)
-                  // Auto-resize up to 5 lines
                   e.target.style.height = 'auto'
                   e.target.style.height = `${Math.min(e.target.scrollHeight, 120)}px`
                 }}
@@ -216,7 +213,7 @@ export default function AskPage() {
                   }
                 }}
                 placeholder="Ask about your spending, budgets, or accounts…"
-                disabled={isStreaming}
+                disabled={isLoading}
                 rows={1}
                 className="w-full resize-none rounded border border-input bg-background px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary disabled:opacity-60"
                 style={{ lineHeight: '1.5', minHeight: '44px', maxHeight: '120px' }}
@@ -225,7 +222,7 @@ export default function AskPage() {
             </div>
             <button
               type="submit"
-              disabled={!input.trim() || isStreaming}
+              disabled={!input.trim() || isLoading}
               className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded bg-primary text-primary-foreground transition-all duration-150 hover:opacity-90 disabled:opacity-40"
               aria-label="Send message"
             >
@@ -238,7 +235,6 @@ export default function AskPage() {
         </div>
       </div>
 
-      {/* Bounce keyframe */}
       <style>{`
         @keyframes bounce {
           0%, 80%, 100% { transform: translateY(0); opacity: 0.4; }

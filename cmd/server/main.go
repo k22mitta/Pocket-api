@@ -23,6 +23,10 @@ func main() {
 
 	cfg := config.Load()
 
+	if cfg.JWTSecret == "" {
+		log.Fatal("JWT_SECRET is not set — refusing to start with an empty signing secret")
+	}
+
 	database, err := db.Connect(cfg.DatabaseURL)
 	if err != nil {
 		log.Printf("database connection failed: %v", err)
@@ -44,7 +48,7 @@ func main() {
 
 	srv := &http.Server{
 		Addr:         ":" + cfg.Port,
-		Handler:      middleware.Logger()(middleware.CORS()(api.NewRouter(cfg, database, plaidClient, aiClient))),
+		Handler:      middleware.Logger()(middleware.CORS(cfg.CORSAllowedOrigin)(api.NewRouter(cfg, database, plaidClient, aiClient))),
 		ReadTimeout:  30 * time.Second,
 		WriteTimeout: 60 * time.Second,
 	}
