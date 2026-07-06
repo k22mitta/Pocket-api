@@ -3,7 +3,7 @@ package queries
 import (
 	"database/sql"
 
-	"github.com/yourname/pocket-api/internal/money"
+	"github.com/k22mitta/pocket-api/internal/money"
 )
 
 type MonthlyTotal struct {

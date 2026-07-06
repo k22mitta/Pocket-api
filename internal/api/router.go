@@ -6,11 +6,11 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/yourname/pocket-api/internal/ai"
-	"github.com/yourname/pocket-api/internal/api/handlers"
-	"github.com/yourname/pocket-api/internal/api/middleware"
-	"github.com/yourname/pocket-api/internal/config"
-	plaidclient "github.com/yourname/pocket-api/internal/plaid"
+	"github.com/k22mitta/pocket-api/internal/ai"
+	"github.com/k22mitta/pocket-api/internal/api/handlers"
+	"github.com/k22mitta/pocket-api/internal/api/middleware"
+	"github.com/k22mitta/pocket-api/internal/config"
+	plaidclient "github.com/k22mitta/pocket-api/internal/plaid"
 )
 
 type router struct {

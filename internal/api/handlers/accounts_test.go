@@ -3,7 +3,7 @@ package handlers
 import (
 	"testing"
 
-	"github.com/yourname/pocket-api/internal/models"
+	"github.com/k22mitta/pocket-api/internal/models"
 )
 
 func strPtr(s string) *string   { return &s }

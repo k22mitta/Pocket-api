@@ -9,7 +9,7 @@ import (
 
 	_ "github.com/lib/pq"
 
-	"github.com/yourname/pocket-api/internal/models"
+	"github.com/k22mitta/pocket-api/internal/models"
 )
 
 // testDB connects to the same database the app uses (DATABASE_URL), so this

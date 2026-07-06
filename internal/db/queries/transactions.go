@@ -4,7 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 
-	"github.com/yourname/pocket-api/internal/models"
+	"github.com/k22mitta/pocket-api/internal/models"
 )
 
 type TransactionFilters struct {

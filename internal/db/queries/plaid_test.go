@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/yourname/pocket-api/internal/models"
+	"github.com/k22mitta/pocket-api/internal/models"
 )
 
 // TestDeletePlaidItemCascadesAccountsAndTransactions asserts that removing a

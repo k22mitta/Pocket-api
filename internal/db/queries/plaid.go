@@ -3,7 +3,7 @@ package queries
 import (
 	"database/sql"
 
-	"github.com/yourname/pocket-api/internal/models"
+	"github.com/k22mitta/pocket-api/internal/models"
 )
 
 func CreatePlaidItem(db *sql.DB, userID, accessToken, itemID, institutionID, institutionName string) error {

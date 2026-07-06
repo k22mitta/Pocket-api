@@ -6,8 +6,8 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/yourname/pocket-api/internal/api/middleware"
-	"github.com/yourname/pocket-api/internal/db/queries"
+	"github.com/k22mitta/pocket-api/internal/api/middleware"
+	"github.com/k22mitta/pocket-api/internal/db/queries"
 )
 
 func GetSpendingSummary(db *sql.DB) http.HandlerFunc {

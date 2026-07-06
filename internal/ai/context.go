@@ -6,7 +6,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/yourname/pocket-api/internal/db/queries"
+	"github.com/k22mitta/pocket-api/internal/db/queries"
 )
 
 func BuildFinancialContext(db *sql.DB, userID string) (string, error) {

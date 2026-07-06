@@ -3,7 +3,7 @@ package queries
 import (
 	"database/sql"
 
-	"github.com/yourname/pocket-api/internal/models"
+	"github.com/k22mitta/pocket-api/internal/models"
 )
 
 func SaveChatMessage(db *sql.DB, userID, role, content string) error {

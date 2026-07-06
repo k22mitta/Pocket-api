@@ -7,8 +7,8 @@ import (
 	"time"
 
 	"github.com/plaid/plaid-go/v29/plaid"
-	"github.com/yourname/pocket-api/internal/db/queries"
-	"github.com/yourname/pocket-api/internal/models"
+	"github.com/k22mitta/pocket-api/internal/db/queries"
+	"github.com/k22mitta/pocket-api/internal/models"
 )
 
 func SyncAccounts(ctx context.Context, client *Client, db *sql.DB, userID string, item models.PlaidItem) error {

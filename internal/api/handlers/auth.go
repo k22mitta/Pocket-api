@@ -6,7 +6,7 @@ import (
 	"net/http"
 
 	"github.com/lib/pq"
-	"github.com/yourname/pocket-api/internal/db/queries"
+	"github.com/k22mitta/pocket-api/internal/db/queries"
 	"golang.org/x/crypto/bcrypt"
 )
 

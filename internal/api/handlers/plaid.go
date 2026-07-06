@@ -9,9 +9,9 @@ import (
 	"net/http"
 
 	"github.com/plaid/plaid-go/v29/plaid"
-	"github.com/yourname/pocket-api/internal/api/middleware"
-	"github.com/yourname/pocket-api/internal/db/queries"
-	plaidclient "github.com/yourname/pocket-api/internal/plaid"
+	"github.com/k22mitta/pocket-api/internal/api/middleware"
+	"github.com/k22mitta/pocket-api/internal/db/queries"
+	plaidclient "github.com/k22mitta/pocket-api/internal/plaid"
 )
 
 func CreateLinkToken(pc *plaidclient.Client, db *sql.DB) http.HandlerFunc {

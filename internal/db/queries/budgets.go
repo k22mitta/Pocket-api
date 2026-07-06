@@ -3,8 +3,8 @@ package queries
 import (
 	"database/sql"
 
-	"github.com/yourname/pocket-api/internal/models"
-	"github.com/yourname/pocket-api/internal/money"
+	"github.com/k22mitta/pocket-api/internal/models"
+	"github.com/k22mitta/pocket-api/internal/money"
 )
 
 func CreateBudget(db *sql.DB, userID, category, period string, limit float64) (models.Budget, error) {

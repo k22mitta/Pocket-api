@@ -6,7 +6,7 @@ import (
 	"log"
 	"time"
 
-	"github.com/yourname/pocket-api/internal/db/queries"
+	"github.com/k22mitta/pocket-api/internal/db/queries"
 )
 
 func StartSyncScheduler(db *sql.DB, client *Client, interval time.Duration) func() {

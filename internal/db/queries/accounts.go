@@ -3,7 +3,7 @@ package queries
 import (
 	"database/sql"
 
-	"github.com/yourname/pocket-api/internal/models"
+	"github.com/k22mitta/pocket-api/internal/models"
 )
 
 func UpsertAccount(db *sql.DB, a models.Account) error {

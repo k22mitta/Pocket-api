@@ -10,12 +10,12 @@ import (
 	"time"
 
 	"github.com/joho/godotenv"
-	"github.com/yourname/pocket-api/internal/ai"
-	"github.com/yourname/pocket-api/internal/api"
-	"github.com/yourname/pocket-api/internal/api/middleware"
-	"github.com/yourname/pocket-api/internal/config"
-	"github.com/yourname/pocket-api/internal/db"
-	plaidclient "github.com/yourname/pocket-api/internal/plaid"
+	"github.com/k22mitta/pocket-api/internal/ai"
+	"github.com/k22mitta/pocket-api/internal/api"
+	"github.com/k22mitta/pocket-api/internal/api/middleware"
+	"github.com/k22mitta/pocket-api/internal/config"
+	"github.com/k22mitta/pocket-api/internal/db"
+	plaidclient "github.com/k22mitta/pocket-api/internal/plaid"
 )
 
 func main() {

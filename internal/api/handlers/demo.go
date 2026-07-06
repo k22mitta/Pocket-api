@@ -7,10 +7,10 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/yourname/pocket-api/internal/api/middleware"
-	"github.com/yourname/pocket-api/internal/db/queries"
-	"github.com/yourname/pocket-api/internal/models"
-	"github.com/yourname/pocket-api/internal/money"
+	"github.com/k22mitta/pocket-api/internal/api/middleware"
+	"github.com/k22mitta/pocket-api/internal/db/queries"
+	"github.com/k22mitta/pocket-api/internal/models"
+	"github.com/k22mitta/pocket-api/internal/money"
 )
 
 // DemoEmail identifies the single shared demo account. /demo/load and
